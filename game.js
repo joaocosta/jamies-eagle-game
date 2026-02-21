@@ -201,6 +201,12 @@ function updateUI() {
     document.getElementById('misses').innerText = `Misses: ${state.misses}/3`;
 }
 
+function updateSpeedUI(currentSpeed) {
+    // Convert speed to MPH (CONFIG.PLAYER_SPEED_MAX = 100 MPH)
+    const mph = Math.round((currentSpeed / CONFIG.PLAYER_SPEED_MAX) * 100);
+    document.getElementById('speed-meter').innerText = `Speed: ${mph} MPH`;
+}
+
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -519,6 +525,8 @@ function animate() {
     let currentSpeed = state.speed;
     if (keys['Space']) currentSpeed += CONFIG.PLAYER_ACCEL;
     
+    updateSpeedUI(currentSpeed);
+
     const moveDist = currentSpeed * dt;
     eagle.position.z -= moveDist;
     state.distanceTraveled += moveDist;
