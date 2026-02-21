@@ -30,6 +30,7 @@ let state = {
 // --- Objects ---
 let camera, scene, renderer;
 let eagle;
+let leftWing, rightWing;
 let audioCtrl;
 let objects = []; // Hoops and Obstacles
 let explosions = []; // Particle systems
@@ -121,11 +122,19 @@ function createEagle() {
     eagleGroup.add(body);
 
     // Wings
-    const wingGeo = new THREE.BoxGeometry(6, 0.2, 1.5);
     const wingMat = new THREE.MeshPhongMaterial({ color: 0xA0522D });
-    const wings = new THREE.Mesh(wingGeo, wingMat);
-    wings.position.set(0, 0.5, 0);
-    eagleGroup.add(wings);
+
+    const wingGeoLeft = new THREE.BoxGeometry(3, 0.2, 1.5);
+    wingGeoLeft.translate(-1.5, 0, 0); // Pivot at the right edge
+    leftWing = new THREE.Mesh(wingGeoLeft, wingMat);
+    leftWing.position.set(0, 0.5, 0);
+    eagleGroup.add(leftWing);
+
+    const wingGeoRight = new THREE.BoxGeometry(3, 0.2, 1.5);
+    wingGeoRight.translate(1.5, 0, 0); // Pivot at the left edge
+    rightWing = new THREE.Mesh(wingGeoRight, wingMat);
+    rightWing.position.set(0, 0.5, 0);
+    eagleGroup.add(rightWing);
 
     // Head
     const headGeo = new THREE.SphereGeometry(0.8, 8, 8);
@@ -500,6 +509,11 @@ function animate() {
     // Banking effect
     const targetRotZ = (keys['ArrowLeft'] || keys['KeyA']) ? 0.5 : (keys['ArrowRight'] || keys['KeyD']) ? -0.5 : 0;
     eagle.rotation.z += (targetRotZ - eagle.rotation.z) * 5 * dt;
+
+    // Wing flapping
+    const wingBop = Math.sin(Date.now() * 0.015) * 0.4;
+    leftWing.rotation.z = wingBop;
+    rightWing.rotation.z = -wingBop;
 
     // Movement
     let currentSpeed = state.speed;
