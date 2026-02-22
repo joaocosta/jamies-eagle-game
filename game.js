@@ -170,9 +170,10 @@ function init() {
     // Mobile Pause Button
     const mobilePauseBtn = document.getElementById('pause-btn-mobile');
     if (mobilePauseBtn) {
-        mobilePauseBtn.addEventListener('click', togglePause);
-        // Prevent default touch behavior on the button itself
-        mobilePauseBtn.addEventListener('touchstart', (e) => { e.preventDefault(); }, { passive: false });
+        mobilePauseBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent default browser behavior (e.g., tap highlight, double-tap zoom)
+            togglePause();
+        }, { passive: false });
     }
     
     // D-pad Control
