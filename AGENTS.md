@@ -33,6 +33,11 @@ This is a 3D flying game where the player controls an eagle to fly through hoops
 - **Config:** Use a `CONFIG` object for tuning constants.
 - **Loop:** Use `requestAnimationFrame` recursively in an `animate()` function.
 - **DOM:** Update UI elements directly using `document.getElementById('id').innerText = ...`.
+- **Input Handling:**
+    - Supports both keyboard (`keydown`, `keyup` events) and touch controls (`touchstart`, `touchmove`, `touchend` events).
+    - Touch input translates swipe gestures into eagle movement (`eagle.position.x`, `eagle.position.y`) and a single-finger press for acceleration.
+    - Global `e.preventDefault()` on touch events is applied conditionally to allow UI buttons to remain clickable.
+    - `TOUCH_ACCEL_THRESHOLD` and `TOUCH_MOVE_SPEED_MULTIPLIER` constants are used to fine-tune touch sensitivity.
 
 #### 2. Audio Logic (`audio.js`)
 - **Pattern:** Object-Oriented.

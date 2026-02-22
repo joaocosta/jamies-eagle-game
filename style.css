@@ -11,20 +11,20 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    pointer-events: none;
-    display: flex; /* Use flexbox for easier positioning of mobile controls */
+    pointer-events: none; /* Default for UI container, overridden for interactive elements */
+    display: flex;
     flex-direction: column;
 }
 
 #score, #misses, #speed-meter {
-    position: absolute; /* Keep absolute for precise top positioning */
+    position: absolute;
     top: 20px;
     font-size: 24px;
     color: white;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
     font-weight: bold;
-    pointer-events: auto; /* Make them clickable if needed later */
-    z-index: 10; /* Ensure they are above game canvas */
+    pointer-events: auto;
+    z-index: 10;
 }
 
 #score {
@@ -51,7 +51,7 @@ body {
     text-align: center;
     color: white;
     pointer-events: auto;
-    z-index: 20; /* Ensure screens are above other UI elements */
+    z-index: 20;
 }
 
 button {
@@ -70,43 +70,95 @@ button:hover {
     background-color: #45a049;
 }
 
-/* Mobile Pause Button Styling */
+/* Remove old mobile pause button styling */
 #mobile-pause-btn {
-    position: absolute;
-    top: 20px;
-right: 20px;
-    width: 50px; /* Make it large enough for touch */
-    height: 50px;
-    font-size: 30px;
-    line-height: 1; /* Center the emoji vertically */
-    padding: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 50%; /* Make it round */
-    border: 2px solid white;
-    color: white;
-    display: none; /* Hidden by default, shown by media query */
-    pointer-events: auto; /* Enable clicks */
-    z-index: 10; /* Ensure it's above the game but below overlay screens */
+    display: none !important; /* Ensure it's hidden */
 }
 
-#mobile-pause-btn:hover {
-    background-color: rgba(0, 0, 0, 0.7);
+
+/* New Mobile Controls Container */
+#mobile-controls-container {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    /* REMOVED: display: flex; */
+    align-items: center;
+    justify-content: center;
+    gap: 20px; /* Space between controls */
+    pointer-events: none; /* Allow clicks on children, not container itself */
+    z-index: 15; /* Above game, below overlay screens */
+}
+
+.mobile-control-btn {
+    pointer-events: auto; /* Re-enable clicks for individual buttons */
+    background-color: rgba(0, 0, 0, 0.6);
+    border: 2px solid white;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
+    font-weight: bold;
+}
+
+.mobile-control-btn:active {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+#accelerate-btn, #pause-btn-mobile {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%; /* Round buttons */
+    font-size: 30px;
+    padding: 0; /* Override default button padding */
+}
+
+#dpad-control {
+    position: relative; /* For arrow positioning */
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    /* background-color: rgba(0, 0, 0, 0.6); */
+    /* border: 2px solid white; */
+    /* Optional: background-image for visual D-pad if not using arrow divs */
+}
+
+.dpad-arrow {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.2); /* Semi-transparent overlay for arrows */
+    border-radius: 5px; /* Slight rounding for visual */
+}
+
+.dpad-up { top: 0; left: 50%; transform: translateX(-50%); width: 30%; height: 40%; border-top-left-radius: 50%; border-top-right-radius: 50%; }
+.dpad-down { bottom: 0; left: 50%; transform: translateX(-50%); width: 30%; height: 40%; border-bottom-left-radius: 50%; border-bottom-right-radius: 50%; }
+.dpad-left { left: 0; top: 50%; transform: translateY(-50%); height: 30%; width: 40%; border-top-left-radius: 50%; border-bottom-left-radius: 50%; }
+.dpad-right { right: 0; top: 50%; transform: translateY(-50%); height: 30%; width: 40%; border-top-right-radius: 50%; border-bottom-right-radius: 50%; }
+
+.dpad-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40%;
+    height: 40%;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.3);
 }
 
 /* Media Queries for Responsive Design */
 @media (max-width: 768px) {
-    #mobile-pause-btn {
-        display: block; /* Show mobile pause button on small screens */
+    #mobile-controls-container {
+        display: flex; /* Show mobile controls on small screens by default */
     }
 
     /* Adjust main UI elements for smaller screens if needed */
-    #score, #misses, #speed-meter {
+    #score, #speed-meter, #misses {
         font-size: 18px;
         top: 10px;
     }
-
     #score { left: 10px; }
-    #misses { right: 80px; } /* Give space for the pause button */
+    #misses { right: 10px; }
     
     #start-screen p, #game-over-screen p, #pause-screen p {
         font-size: 14px; /* Smaller text on small screens */
@@ -115,5 +167,12 @@ right: 20px;
     /* Hide keyboard instructions on mobile */
     #start-screen p:nth-of-type(2) { /* Controls: WASD or Arrow Keys to Move... */
         display: none;
+    }
+}
+
+/* Hide desktop UI elements if mobile controls are active, might need more refinement */
+@media (min-width: 769px) {
+    #mobile-controls-container {
+        display: none; /* Hide mobile controls on larger screens */
     }
 }

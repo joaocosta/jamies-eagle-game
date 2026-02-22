@@ -36,16 +36,20 @@ let objects = []; // Hoops and Obstacles
 let explosions = []; // Particle systems
 let keys = {};
 
-// Global Touch Variables
-let touchStartX = 0;
-let touchStartY = 0;
-let touchCurrentX = 0;
-let touchCurrentY = 0;
-let isTouching = false;
-let isAccelerating = false; // For continuous acceleration on touch
+// On-screen control states
+let isAccelerateBtnPressed = false;
+let isDpadUp = false;
+let isDpadDown = false;
+let isDpadLeft = false;
+let isDpadRight = false;
+
+// For D-pad touch tracking
+let dpadTouchIdentifier = null; // To track a specific touch
+let dpadRect = null; // Bounding rectangle of the dpad for calculations
+
 
 // Constants for Touch Control
-const TOUCH_ACCEL_THRESHOLD = 20; // Pixels moved before considering it a significant swipe for movement
+const TOUCH_ACCEL_THRESHOLD = 20; // Pixels moved before considering it a significant swipe for movement (no longer used for movement, but for reference)
 const TOUCH_MOVE_SPEED_MULTIPLIER = 0.5; // Reduce touch movement speed by half
 
 
@@ -68,6 +72,35 @@ const materials = {
 // Rotate geometries once if needed
 geometries.fan.rotateX(Math.PI / 2);
 geometries.log.rotateZ(Math.PI / 2);
+
+
+// --- Helper functions for D-pad ---
+function handleDpadTouch(clientX, clientY, rect) {
+    resetDpadControls(); // Reset all before setting new ones
+
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    // We only care about direction relative to center, not magnitude for simple D-pad
+    const deadZone = rect.width * 0.2; // A small central dead zone
+
+    const x = clientX - centerX;
+    const y = clientY - centerY;
+
+    if (Math.abs(x) > Math.abs(y)) { // More horizontal movement
+        if (x < -deadZone) isDpadLeft = true;
+        else if (x > deadZone) isDpadRight = true;
+    } else { // More vertical movement
+        if (y < -deadZone) isDpadUp = true;
+        else if (y > deadZone) isDpadDown = true;
+    }
+}
+
+function resetDpadControls() {
+    isDpadUp = false;
+    isDpadDown = false;
+    isDpadLeft = false;
+    isDpadRight = false;
+}
 
 // --- Initialization ---
 function init() {
@@ -106,7 +139,7 @@ function init() {
     // Audio
     audioCtrl = new AudioController();
 
-    // Event Listeners
+    // Event Listeners (Keyboard)
     window.addEventListener('resize', onWindowResize, false);
     document.addEventListener('keydown', (e) => {
         if (e.code === 'KeyP') {
@@ -116,76 +149,79 @@ function init() {
     });
     document.addEventListener('keyup', (e) => keys[e.code] = false);
 
-    // Touch Event Listeners
-    document.addEventListener('touchstart', (e) => {
-        // Only prevent default if the target is NOT a button or other interactive element
-        // Check if the touched element or any of its parents is a button
-        let targetIsButton = false;
-        let currentTarget = e.target;
-        while (currentTarget) {
-            if (currentTarget.tagName === 'BUTTON' || currentTarget.tagName === 'A' || currentTarget.tagName === 'INPUT' || currentTarget.classList.contains('interactive-ui')) {
-                targetIsButton = true;
-                break;
+    // --- New On-screen Control Event Listeners ---
+    // Accelerate Button
+    const accelerateBtn = document.getElementById('accelerate-btn');
+    if (accelerateBtn) {
+        accelerateBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isAccelerateBtnPressed = true;
+        }, { passive: false });
+        accelerateBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            isAccelerateBtnPressed = false;
+        }, { passive: false });
+        accelerateBtn.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            isAccelerateBtnPressed = false;
+        }, { passive: false });
+    }
+
+    // Mobile Pause Button
+    const mobilePauseBtn = document.getElementById('pause-btn-mobile');
+    if (mobilePauseBtn) {
+        mobilePauseBtn.addEventListener('click', togglePause);
+        // Prevent default touch behavior on the button itself
+        mobilePauseBtn.addEventListener('touchstart', (e) => { e.preventDefault(); }, { passive: false });
+    }
+    
+    // D-pad Control
+    const dpadControl = document.getElementById('dpad-control');
+    if (dpadControl) {
+        dpadControl.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1 && dpadTouchIdentifier === null) {
+                dpadTouchIdentifier = e.touches[0].identifier;
+                dpadRect = dpadControl.getBoundingClientRect(); // Get rect once on touchstart
+                handleDpadTouch(e.touches[0].clientX, e.touches[0].clientY, dpadRect);
             }
-            currentTarget = currentTarget.parentElement;
-        }
+        }, { passive: false });
 
-        if (!targetIsButton) {
-            e.preventDefault(); // Prevent scrolling/zooming only if not interacting with a UI button
-        }
-
-        if (state.gameOver || state.isPaused) return; // Prevent input when game is not active
-        if (e.touches.length === 1) { // Single touch for movement/acceleration
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-            touchCurrentX = touchStartX; // Initialize current with start
-            touchCurrentY = touchStartY; // Initialize current with start
-            isTouching = true;
-            isAccelerating = true; // Start accelerating on first touch
-        } else if (e.touches.length === 2) { // Two fingers to pause
-            togglePause();
-        }
-    }, { passive: false });
-
-    document.addEventListener('touchmove', (e) => {
-        if (isTouching && e.touches.length === 1) {
-            e.preventDefault(); // Always prevent default on touchmove if moving
-            touchCurrentX = e.touches[0].clientX;
-            touchCurrentY = e.touches[0].clientY;
-        }
-    }, { passive: false });
-
-    document.addEventListener('touchend', (e) => {
-        // Similar logic for touchend to ensure buttons are clickable
-        let targetIsButton = false;
-        let currentTarget = e.target;
-        while (currentTarget) {
-            if (currentTarget.tagName === 'BUTTON' || currentTarget.tagName === 'A' || currentTarget.tagName === 'INPUT' || currentTarget.classList.contains('interactive-ui')) {
-                targetIsButton = true;
-                break;
+        dpadControl.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = Array.from(e.touches).find(t => t.identifier === dpadTouchIdentifier);
+            if (touch && dpadRect) {
+                handleDpadTouch(touch.clientX, touch.clientY, dpadRect);
             }
-            currentTarget = currentTarget.parentElement;
-        }
+        }, { passive: false });
 
-        if (!targetIsButton) {
-            e.preventDefault(); // Prevent tap highlight etc. only if not on a button
-        }
+        dpadControl.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const touch = Array.from(e.changedTouches).find(t => t.identifier === dpadTouchIdentifier);
+            if (touch) {
+                resetDpadControls();
+                dpadTouchIdentifier = null;
+                dpadRect = null;
+            }
+        }, { passive: false });
 
-        isTouching = false;
-        isAccelerating = false; // Stop accelerating on touch release
-        // Clear simulated key presses from touch
-        keys['ArrowUp'] = false;
-        keys['ArrowDown'] = false;
-        keys['ArrowLeft'] = false;
-        keys['ArrowRight'] = false;
-        keys['Space'] = false; // Also clear space if it was simulated
-    }, { passive: false });
+        dpadControl.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            const touch = Array.from(e.changedTouches).find(t => t.identifier === dpadTouchIdentifier);
+            if (touch) {
+                resetDpadControls();
+                dpadTouchIdentifier = null;
+                dpadRect = null;
+            }
+        }, { passive: false });
+    }
 
 
     document.getElementById('start-btn').addEventListener('click', startGame);
     document.getElementById('restart-btn').addEventListener('click', restartGame);
     document.getElementById('resume-btn').addEventListener('click', togglePause);
-    document.getElementById('mobile-pause-btn').addEventListener('click', togglePause); // New mobile pause button
+    // Removed old document.getElementById('mobile-pause-btn') listener as it's replaced
+
 
     // Display version info
     if (typeof __COMMIT_HASH__ !== 'undefined' && typeof __BUILD_DATE__ !== 'undefined') {
@@ -194,6 +230,13 @@ function init() {
             versionInfoElement.innerHTML = `Version: ${__COMMIT_HASH__} Built: ${__BUILD_DATE__}`;
         }
     }
+
+    // Hide mobile controls initially (they will be shown by startGame if on mobile)
+    const mobileControls = document.getElementById('mobile-controls-container');
+    if (mobileControls) {
+        mobileControls.style.display = 'none';
+    }
+
 
     // Loop
     animate();
@@ -247,6 +290,12 @@ function startGame() {
     document.getElementById('start-screen').style.display = 'none';
     document.getElementById('game-over-screen').style.display = 'none';
     
+    // Show mobile controls if on a mobile viewport
+    const mobileControls = document.getElementById('mobile-controls-container');
+    if (mobileControls && window.innerWidth <= 768) { // Check for mobile viewport
+        mobileControls.style.display = 'flex';
+    }
+
     resetGame();
     state.isRunning = true;
     audioCtrl.startMusic();
@@ -553,6 +602,13 @@ function togglePause() {
     
     state.isPaused = !state.isPaused;
     
+    // Toggle mobile controls visibility based on pause state
+    const mobileControls = document.getElementById('mobile-controls-container');
+    if (mobileControls && window.innerWidth <= 768) { // Only toggle if on mobile viewport
+        mobileControls.style.display = state.isPaused ? 'none' : 'flex';
+    }
+
+
     if (state.isPaused) {
         document.getElementById('pause-screen').style.display = 'block';
     } else {
@@ -566,6 +622,12 @@ function gameOver() {
     state.gameOver = true;
     state.isRunning = false;
     
+    // Hide mobile controls
+    const mobileControls = document.getElementById('mobile-controls-container');
+    if (mobileControls) {
+        mobileControls.style.display = 'none';
+    }
+
     // Explosion
     createExplosion(eagle.position);
     eagle.visible = false;
@@ -590,42 +652,17 @@ function animate() {
         return;
     }
 
-    // Input Handling (Keyboard & Touch)
-    let moveLeft = keys['ArrowLeft'] || keys['KeyA'];
-    let moveRight = keys['ArrowRight'] || keys['KeyD'];
-    let moveUp = keys['ArrowUp'] || keys['KeyW'];
-    let moveDown = keys['ArrowDown'] || keys['KeyS'];
-    let accelerate = keys['Space'];
+    // Input Handling (Keyboard & On-screen controls)
+    let moveLeft = keys['ArrowLeft'] || keys['KeyA'] || isDpadLeft;
+    let moveRight = keys['ArrowRight'] || keys['KeyD'] || isDpadRight;
+    let moveUp = keys['ArrowUp'] || keys['KeyW'] || isDpadUp;
+    let moveDown = keys['ArrowDown'] || keys['KeyS'] || isDpadDown;
+    let accelerate = keys['Space'] || isAccelerateBtnPressed;
 
     let currentTurnSpeed = CONFIG.PLAYER_TURN_SPEED; // Initialize with base turn speed
 
-    if (isTouching) {
-        const deltaX = touchCurrentX - touchStartX;
-        const deltaY = touchCurrentY - touchStartY;
-        
-        // Flag to check if touch is causing movement
-        let touchCausedMovement = false; 
-
-        // Apply movement based on swipe direction and magnitude
-        // Using a threshold to prevent accidental small movements
-        if (Math.abs(deltaX) > TOUCH_ACCEL_THRESHOLD) {
-            if (deltaX < 0) moveLeft = true;
-            else moveRight = true;
-            touchCausedMovement = true;
-        }
-        if (Math.abs(deltaY) > TOUCH_ACCEL_THRESHOLD) {
-            if (deltaY < 0) moveUp = true;
-            else moveDown = true;
-            touchCausedMovement = true;
-        }
-
-        // Always accelerate if touch is active (single finger)
-        accelerate = accelerate || isAccelerating; // Combine keyboard space with touch acceleration
-
-        // Apply speed multiplier if touch caused movement
-        if (touchCausedMovement) {
-            currentTurnSpeed = CONFIG.PLAYER_TURN_SPEED * TOUCH_MOVE_SPEED_MULTIPLIER;
-        }
+    if (isDpadUp || isDpadDown || isDpadLeft || isDpadRight) { // If any D-pad control is active
+        currentTurnSpeed = CONFIG.PLAYER_TURN_SPEED * TOUCH_MOVE_SPEED_MULTIPLIER;
     }
     
     if (moveUp) eagle.position.y += currentTurnSpeed * dt * 0.5;
