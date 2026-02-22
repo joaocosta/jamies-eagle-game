@@ -21,7 +21,7 @@ export class AudioController {
         }
     }
 
-    startMusic() {
+    resumeMusic() {
         if (!this.ctx) this.init();
         if (this.ctx.state === 'suspended') this.ctx.resume();
         this.isPlaying = true;
@@ -29,7 +29,7 @@ export class AudioController {
         this.scheduler();
     }
 
-    stopMusic() {
+    pauseMusic() {
         this.isPlaying = false;
         if (this.ctx) this.ctx.suspend();
     }

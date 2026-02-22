@@ -22,6 +22,7 @@ let state = {
     misses: 0,
     gameOver: false,
     isPaused: false,
+    wasAutoPausedByVisibility: false, // NEW: Track if paused due to visibility change
     speed: CONFIG.PLAYER_SPEED_BASE,
     distanceTraveled: 0,
     lastSpawnZ: 0,
@@ -148,6 +149,9 @@ function init() {
         keys[e.code] = true;
     });
     document.addEventListener('keyup', (e) => keys[e.code] = false);
+
+    // NEW: Visibility API event listener for auto-pause/resume
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // --- New On-screen Control Event Listeners ---
     // Accelerate Button
@@ -299,7 +303,7 @@ function startGame() {
 
     resetGame();
     state.isRunning = true;
-    audioCtrl.startMusic();
+    audioCtrl.resumeMusic();
 }
 
 function restartGame() {
@@ -599,23 +603,31 @@ function checkCollisions(dt) {
 }
 
 function togglePause() {
-    if (!state.isRunning || state.gameOver) return;
-    
+    if (!state.isRunning || state.gameOver) return; // Keep this line
     state.isPaused = !state.isPaused;
-    
-    // Toggle mobile controls visibility based on pause state
-    const mobileControls = document.getElementById('mobile-controls-container');
-    if (mobileControls && window.innerWidth <= 768) { // Only toggle if on mobile viewport
-        mobileControls.style.display = state.isPaused ? 'none' : 'flex';
-    }
+    console.log('togglePause called. state.isPaused is now:', state.isPaused); // NEW LOG
 
+    const pauseScreen = document.getElementById('pause-screen');
+    const mobileControls = document.getElementById('mobile-controls-container');
 
     if (state.isPaused) {
-        document.getElementById('pause-screen').style.display = 'block';
+        pauseScreen.style.display = 'block';
+        audioCtrl.pauseMusic(); // Pause music - ADDED
+        console.log('Game paused. Music paused.'); // NEW LOG
+        if (window.innerWidth <= 768 && mobileControls) {
+            mobileControls.style.display = 'none'; // Handle mobile controls in if block
+        }
     } else {
-        document.getElementById('pause-screen').style.display = 'none';
-        animate(); 
+        pauseScreen.style.display = 'none';
+        audioCtrl.resumeMusic(); // Resume music - ADDED
+        console.log('Game unpaused. Music resumed.'); // NEW LOG
+        if (window.innerWidth <= 768 && mobileControls) {
+            mobileControls.style.display = 'flex'; // Handle mobile controls in else block
+        }
+        requestAnimationFrame(animate); // NEW: Explicitly restart the animation loop
     }
+    // No need to manually trigger animate() here, as requestAnimationFrame will pick up
+    // once isPaused is false. Removed animate() call from original else block.
 }
 
 function gameOver() {
@@ -639,6 +651,31 @@ function gameOver() {
     document.getElementById('final-score').innerText = `Score: ${state.score}`;
     document.getElementById('game-over-screen').style.display = 'block';
 }
+
+// NEW: Function to handle visibility changes
+function handleVisibilityChange() {
+    console.log('Visibility changed:', document.visibilityState); // NEW LOG
+    if (document.visibilityState === 'hidden') {
+        console.log('Document hidden. state.isRunning:', state.isRunning, 'state.isPaused:', state.isPaused, 'state.gameOver:', state.gameOver); // NEW LOG
+        // If the game is running and not already manually paused, auto-pause it
+        if (state.isRunning && !state.isPaused && !state.gameOver) {
+            console.log('Auto-pausing due to visibility hidden.'); // NEW LOG
+            togglePause();
+            state.wasAutoPausedByVisibility = true; // Mark as auto-paused
+            console.log('Auto-pause flag set:', state.wasAutoPausedByVisibility); // NEW LOG
+        }
+    } else { // document.visibilityState === 'visible'
+        console.log('Document visible. state.wasAutoPausedByVisibility:', state.wasAutoPausedByVisibility, 'state.isPaused:', state.isPaused, 'state.isRunning:', state.isRunning); // NEW LOG
+        // If the game was auto-paused due to visibility, unpause it
+        if (state.wasAutoPausedByVisibility && state.isPaused && state.isRunning) {
+            console.log('Auto-unpausing due to visibility visible.'); // NEW LOG
+            togglePause();
+            state.wasAutoPausedByVisibility = false; // Reset the flag
+            console.log('Auto-pause flag reset:', state.wasAutoPausedByVisibility); // NEW LOG
+        }
+    }
+}
+
 
 function animate() {
     if (state.isPaused) return; 
