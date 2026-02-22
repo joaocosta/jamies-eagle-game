@@ -117,6 +117,22 @@ function init() {
 
     // Touch Event Listeners
     document.addEventListener('touchstart', (e) => {
+        // Only prevent default if the target is NOT a button or other interactive element
+        // Check if the touched element or any of its parents is a button
+        let targetIsButton = false;
+        let currentTarget = e.target;
+        while (currentTarget) {
+            if (currentTarget.tagName === 'BUTTON' || currentTarget.tagName === 'A' || currentTarget.tagName === 'INPUT' || currentTarget.classList.contains('interactive-ui')) {
+                targetIsButton = true;
+                break;
+            }
+            currentTarget = currentTarget.parentElement;
+        }
+
+        if (!targetIsButton) {
+            e.preventDefault(); // Prevent scrolling/zooming only if not interacting with a UI button
+        }
+
         if (state.gameOver || state.isPaused) return; // Prevent input when game is not active
         if (e.touches.length === 1) { // Single touch for movement/acceleration
             touchStartX = e.touches[0].clientX;
@@ -125,22 +141,35 @@ function init() {
             touchCurrentY = touchStartY; // Initialize current with start
             isTouching = true;
             isAccelerating = true; // Start accelerating on first touch
-            e.preventDefault();
         } else if (e.touches.length === 2) { // Two fingers to pause
             togglePause();
-            e.preventDefault();
         }
     }, { passive: false });
 
     document.addEventListener('touchmove', (e) => {
         if (isTouching && e.touches.length === 1) {
+            e.preventDefault(); // Always prevent default on touchmove if moving
             touchCurrentX = e.touches[0].clientX;
             touchCurrentY = e.touches[0].clientY;
-            e.preventDefault();
         }
     }, { passive: false });
 
     document.addEventListener('touchend', (e) => {
+        // Similar logic for touchend to ensure buttons are clickable
+        let targetIsButton = false;
+        let currentTarget = e.target;
+        while (currentTarget) {
+            if (currentTarget.tagName === 'BUTTON' || currentTarget.tagName === 'A' || currentTarget.tagName === 'INPUT' || currentTarget.classList.contains('interactive-ui')) {
+                targetIsButton = true;
+                break;
+            }
+            currentTarget = currentTarget.parentElement;
+        }
+
+        if (!targetIsButton) {
+            e.preventDefault(); // Prevent tap highlight etc. only if not on a button
+        }
+
         isTouching = false;
         isAccelerating = false; // Stop accelerating on touch release
         // Clear simulated key presses from touch
@@ -149,7 +178,6 @@ function init() {
         keys['ArrowLeft'] = false;
         keys['ArrowRight'] = false;
         keys['Space'] = false; // Also clear space if it was simulated
-        e.preventDefault();
     }, { passive: false });
 
 
