@@ -36,6 +36,18 @@ let objects = []; // Hoops and Obstacles
 let explosions = []; // Particle systems
 let keys = {};
 
+// Global Touch Variables
+let touchStartX = 0;
+let touchStartY = 0;
+let touchCurrentX = 0;
+let touchCurrentY = 0;
+let isTouching = false;
+let isAccelerating = false; // For continuous acceleration on touch
+
+// Constants for Touch Control
+const TOUCH_ACCEL_THRESHOLD = 20; // Pixels moved before considering it a significant swipe for movement
+
+
 // Geometries & Materials Cache
 const geometries = {
     hoop: new THREE.TorusGeometry(CONFIG.HOOP_RADIUS, CONFIG.HOOP_THICKNESS, 8, 16),
@@ -103,9 +115,48 @@ function init() {
     });
     document.addEventListener('keyup', (e) => keys[e.code] = false);
 
+    // Touch Event Listeners
+    document.addEventListener('touchstart', (e) => {
+        if (state.gameOver || state.isPaused) return; // Prevent input when game is not active
+        if (e.touches.length === 1) { // Single touch for movement/acceleration
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchCurrentX = touchStartX; // Initialize current with start
+            touchCurrentY = touchStartY; // Initialize current with start
+            isTouching = true;
+            isAccelerating = true; // Start accelerating on first touch
+            e.preventDefault();
+        } else if (e.touches.length === 2) { // Two fingers to pause
+            togglePause();
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+        if (isTouching && e.touches.length === 1) {
+            touchCurrentX = e.touches[0].clientX;
+            touchCurrentY = e.touches[0].clientY;
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    document.addEventListener('touchend', (e) => {
+        isTouching = false;
+        isAccelerating = false; // Stop accelerating on touch release
+        // Clear simulated key presses from touch
+        keys['ArrowUp'] = false;
+        keys['ArrowDown'] = false;
+        keys['ArrowLeft'] = false;
+        keys['ArrowRight'] = false;
+        keys['Space'] = false; // Also clear space if it was simulated
+        e.preventDefault();
+    }, { passive: false });
+
+
     document.getElementById('start-btn').addEventListener('click', startGame);
     document.getElementById('restart-btn').addEventListener('click', restartGame);
     document.getElementById('resume-btn').addEventListener('click', togglePause);
+    document.getElementById('mobile-pause-btn').addEventListener('click', togglePause); // New mobile pause button
 
     // Loop
     animate();
@@ -502,18 +553,43 @@ function animate() {
         return;
     }
 
-    // Input Handling
-    if (keys['ArrowUp'] || keys['KeyW']) eagle.position.y += CONFIG.PLAYER_TURN_SPEED * dt * 0.5;
-    if (keys['ArrowDown'] || keys['KeyS']) eagle.position.y -= CONFIG.PLAYER_TURN_SPEED * dt * 0.5;
-    if (keys['ArrowLeft'] || keys['KeyA']) eagle.position.x -= CONFIG.PLAYER_TURN_SPEED * dt;
-    if (keys['ArrowRight'] || keys['KeyD']) eagle.position.x += CONFIG.PLAYER_TURN_SPEED * dt;
+    // Input Handling (Keyboard & Touch)
+    let moveLeft = keys['ArrowLeft'] || keys['KeyA'];
+    let moveRight = keys['ArrowRight'] || keys['KeyD'];
+    let moveUp = keys['ArrowUp'] || keys['KeyW'];
+    let moveDown = keys['ArrowDown'] || keys['KeyS'];
+    let accelerate = keys['Space'];
+
+    if (isTouching) {
+        const deltaX = touchCurrentX - touchStartX;
+        const deltaY = touchCurrentY - touchStartY;
+
+        // Apply movement based on swipe direction and magnitude
+        // Using a threshold to prevent accidental small movements
+        if (Math.abs(deltaX) > TOUCH_ACCEL_THRESHOLD) {
+            if (deltaX < 0) moveLeft = true;
+            else moveRight = true;
+        }
+        if (Math.abs(deltaY) > TOUCH_ACCEL_THRESHOLD) {
+            if (deltaY < 0) moveUp = true;
+            else moveDown = true;
+        }
+
+        // Always accelerate if touch is active (single finger)
+        accelerate = accelerate || isAccelerating; // Combine keyboard space with touch acceleration
+    }
+
+    if (moveUp) eagle.position.y += CONFIG.PLAYER_TURN_SPEED * dt * 0.5;
+    if (moveDown) eagle.position.y -= CONFIG.PLAYER_TURN_SPEED * dt * 0.5;
+    if (moveLeft) eagle.position.x -= CONFIG.PLAYER_TURN_SPEED * dt;
+    if (moveRight) eagle.position.x += CONFIG.PLAYER_TURN_SPEED * dt;
     
     // Clamp X/Y
     eagle.position.y = Math.max(1, Math.min(eagle.position.y, 50));
     eagle.position.x = Math.max(-100, Math.min(eagle.position.x, 100));
 
     // Banking effect
-    const targetRotZ = (keys['ArrowLeft'] || keys['KeyA']) ? 0.5 : (keys['ArrowRight'] || keys['KeyD']) ? -0.5 : 0;
+    const targetRotZ = (moveLeft) ? 0.5 : (moveRight) ? -0.5 : 0;
     eagle.rotation.z += (targetRotZ - eagle.rotation.z) * 5 * dt;
 
     // Wing flapping
@@ -523,7 +599,7 @@ function animate() {
 
     // Movement
     let currentSpeed = state.speed;
-    if (keys['Space']) currentSpeed += CONFIG.PLAYER_ACCEL;
+    if (accelerate) currentSpeed += CONFIG.PLAYER_ACCEL;
     
     updateSpeedUI(currentSpeed);
 
