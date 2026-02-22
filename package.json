@@ -1,0 +1,19 @@
+{
+  "name": "jamies-eagle-game",
+  "version": "1.0.0",
+  "description": "A 3D flying game where you control an eagle, fly through hoops, and avoid obstacles.",
+  "main": "audio.js",
+  "scripts": {
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "three": "^0.183.1",
+    "vite": "^7.3.1",
+    "vite-plugin-singlefile": "^2.3.0"
+  }
+}

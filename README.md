@@ -11,20 +11,30 @@ A 3D flying game where you control an eagle, fly through hoops, and avoid obstac
 6. Avoid walls, fans, and swinging logs.
 7. Don't miss 3 hoops or crash!
 
-## Running Locally
+## Building and Running Locally
 
-Since this game uses ES6 modules, you need to run it via a local web server (to avoid CORS errors with local files).
+This game uses Vite to bundle all code and assets into a single HTML file that can be run directly without a web server.
 
-### Using Python
-If you have Python installed, run:
+### Prerequisites
+You need Node.js installed.
+
+### Setup
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Build the single-file game:
+   ```bash
+   npm run build
+   ```
+
+3. Run the game:
+   Open `dist/index.html` in your web browser. You can double-click the file in your file explorer. No web server is required.
+
+### Development
+To develop with live reloading:
 ```bash
-python3 -m http.server
+npx vite
 ```
-Then open [http://localhost:8000](http://localhost:8000) in your browser.
-
-### Using Node.js
-If you have Node.js, you can install `http-server`:
-```bash
-npx http-server .
-```
-Then open the URL shown in the terminal.
+This will start a local development server at http://localhost:5173.
