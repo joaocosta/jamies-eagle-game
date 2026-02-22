@@ -46,6 +46,7 @@ let isAccelerating = false; // For continuous acceleration on touch
 
 // Constants for Touch Control
 const TOUCH_ACCEL_THRESHOLD = 20; // Pixels moved before considering it a significant swipe for movement
+const TOUCH_MOVE_SPEED_MULTIPLIER = 0.5; // Reduce touch movement speed by half
 
 
 // Geometries & Materials Cache
@@ -596,29 +597,41 @@ function animate() {
     let moveDown = keys['ArrowDown'] || keys['KeyS'];
     let accelerate = keys['Space'];
 
+    let currentTurnSpeed = CONFIG.PLAYER_TURN_SPEED; // Initialize with base turn speed
+
     if (isTouching) {
         const deltaX = touchCurrentX - touchStartX;
         const deltaY = touchCurrentY - touchStartY;
+        
+        // Flag to check if touch is causing movement
+        let touchCausedMovement = false; 
 
         // Apply movement based on swipe direction and magnitude
         // Using a threshold to prevent accidental small movements
         if (Math.abs(deltaX) > TOUCH_ACCEL_THRESHOLD) {
             if (deltaX < 0) moveLeft = true;
             else moveRight = true;
+            touchCausedMovement = true;
         }
         if (Math.abs(deltaY) > TOUCH_ACCEL_THRESHOLD) {
             if (deltaY < 0) moveUp = true;
             else moveDown = true;
+            touchCausedMovement = true;
         }
 
         // Always accelerate if touch is active (single finger)
         accelerate = accelerate || isAccelerating; // Combine keyboard space with touch acceleration
-    }
 
-    if (moveUp) eagle.position.y += CONFIG.PLAYER_TURN_SPEED * dt * 0.5;
-    if (moveDown) eagle.position.y -= CONFIG.PLAYER_TURN_SPEED * dt * 0.5;
-    if (moveLeft) eagle.position.x -= CONFIG.PLAYER_TURN_SPEED * dt;
-    if (moveRight) eagle.position.x += CONFIG.PLAYER_TURN_SPEED * dt;
+        // Apply speed multiplier if touch caused movement
+        if (touchCausedMovement) {
+            currentTurnSpeed = CONFIG.PLAYER_TURN_SPEED * TOUCH_MOVE_SPEED_MULTIPLIER;
+        }
+    }
+    
+    if (moveUp) eagle.position.y += currentTurnSpeed * dt * 0.5;
+    if (moveDown) eagle.position.y -= currentTurnSpeed * dt * 0.5;
+    if (moveLeft) eagle.position.x -= currentTurnSpeed * dt;
+    if (moveRight) eagle.position.x += currentTurnSpeed * dt;
     
     // Clamp X/Y
     eagle.position.y = Math.max(1, Math.min(eagle.position.y, 50));
