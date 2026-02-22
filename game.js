@@ -158,6 +158,14 @@ function init() {
     document.getElementById('resume-btn').addEventListener('click', togglePause);
     document.getElementById('mobile-pause-btn').addEventListener('click', togglePause); // New mobile pause button
 
+    // Display version info
+    if (typeof __COMMIT_HASH__ !== 'undefined' && typeof __BUILD_DATE__ !== 'undefined') {
+        const versionInfoElement = document.getElementById('version-info');
+        if (versionInfoElement) {
+            versionInfoElement.innerHTML = `Version: ${__COMMIT_HASH__} Built: ${__BUILD_DATE__}`;
+        }
+    }
+
     // Loop
     animate();
 }
